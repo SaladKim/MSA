@@ -1,0 +1,16 @@
+server:
+  port: 0
+  # 포트번호가 0이면 랜덤포트를 이용
+spring:
+  application:
+    name: my-first-service
+eureka:
+  client:
+    register-with-eureka: true
+    #    eureka 서버에 등록할 것인지
+    fetch-registry: true
+    #    eureka서버로부터 인스턴스들의 정보를 주기적으로 가져올것인지 설정하는 속성, true로 설정하면 갱신 된 정보를 받겠다는 설정
+    service-url:
+      defaultZone: http://127.0.0.1:8761/eureka
+  instance:
+    instance-id: ${spring.application.name}:${spring.appliction.instance_id:${random.value}}

@@ -117,4 +117,18 @@ Spring Framework에서 대표적으로 Orchestration-Based Saga를 사용할 수
         - 각 Broker에게 담당 파티션 할당 수행
         - Broker 정상 동작 모니터링 관리
 
+## Kafka Client
+- kafka와 데이터를 주고받기 위해 사용하는 java library
+- Producer, Consumer, Admin, Stream 등 Kafka 관련 API 제공
+- 다양한 3rd party library 존재: C/C++, Node.js, Python, .Net 등
+
+## Kafka Connect
+- Kafka Connect를 통해 Data를 Import/Export 가능
+- 코드 없이 Configuration으로 데이터를 이동
+- Standalone mode, Distribution mode 지원
+    - RESTful APU를 통해 지원
+    - Stream 또는 Batch 형태로 데이터 전송 가능
+    - 커스텀 Connector를 통한 다양한 Plugin 제공(File,S3,Hive,Mysql,etc...)
+
+
 

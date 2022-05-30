@@ -120,7 +120,7 @@ Spring Framework에서 대표적으로 Orchestration-Based Saga를 사용할 수
 ## Kafka Client
 - kafka와 데이터를 주고받기 위해 사용하는 java library
 - Producer, Consumer, Admin, Stream 등 Kafka 관련 API 제공
-- 다양한 3rd party library 존재: C/C++, Node.js, Python, .Net 등
+- 다양한 3rd party library 존재: C/C++, Node.js, Python, .Net 등(<http://cwiki.apache.org/confluence/display/KAFKA/Clients>)
 
 ## Kafka Connect
 - Kafka Connect를 통해 Data를 Import/Export 가능

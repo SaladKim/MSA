@@ -99,12 +99,98 @@ Spring Framework에서 대표적으로 Orchestration-Based Saga를 사용할 수
 
 
 # Apache Kafka
+## Kafka란?
+Kafka는 Pub-Sub 모델의 메시지 큐, 분산환경에 특화되어있는 특징을 가지고 있음
+
+## 구성요소
+1. Event            
+Event는 kafka에서 Producer와 Consumer가 데이터를 주고 받는 단위, 이벤트 또는 메시지라고 표기
+ 
+2. Producer        
+Producer는 kafka에 이벤트를 게시(post)하는 클라이언트 어플리케이션을 의미
+
+3. Consumer     
+Consumer는 이러한 Topic을 구독하고 이로부터 얻어낸 이벤트를 처리하는 클라이언트 어플리케이션
+
+4. Topic        
+이벤트가 쓰이는 곳입니다. Producer는 이 Topic에 이벤트를 게시합니다. 그리고 Consumer는 Topic으로 부터 이벤트를 가져와 처리, Topic은 파일시스템의 폴더와 유사하며, 이벤트는 폴더안의 파일과 유사
+Topic에 저장된 이벤트는 필요한 만큼 다시 읽을 수 있음.
+
+5. Partition        
+Topic는 여러 Broker에 분산되어 저장되며, 이렇게 분산된 Topic을 Partition이라고 한다. 어떤 이벤트가 Partition에 저장될지는 이벤트의 key(키)에 의해 정해지며, 같은 키를 가지는 이벤트는 항상 같은 Partition에 저장        
+Kafka는 Topic의 Partition에 지정된 Consumer가 항상 정확히 동일한 순서로 Partition의 이벤트를 읽을것을 보장.
+
 ## 특징  
-1. Producer/Consumer 분리
-2. 메세지를 여러 Consumer에게 허용 (EX. Hadoop,Serch Engine, Monitoring, Email)
-3. 높은 처리량을 위한 메시지 최적화
-4. Scale-out 가능
-5. Eco-system
+1. Producer/Consumer 분리       
+Kafka의 Producer와 Consumer는 완전 별개로 동작, Producer는 Broker의 Topic에 메시지를 게시하기만 하면되며, Consumer는 Broker의 특정 Topic에서 메시지를 가져와 처리를 하기만 한다.        
+이 덕분에 Kafka는 높은 확장성을 제공, Producer 또는 Consumer를 필요에 의해 스케일 인 아웃하기에 용이한 구조
+
+2. Push 와 Pull 모델        
+    1. 다양한 소비자의 처리 형태와 속도를 고려하지 않아도 된다.반대의 경우인 Push모델에서는, Broker가 데이터 전송 속도를 제어하기 때문에, 다양한 메시지 스트림의 소비자를 다루기가 어렵지만, Pull 모델은 Consumer가 처리 가능한 때에 메시지를 가져와 처리하기 때문에 다양한 소비자를 다루기가 쉽다.                                     
+
+    2. 불필요한 지연없이 일괄처리를 통해 성능향상 도모.Push 모델의 경우에는, 요청을 즉시 보내거나, 더 많은 메시지를 한번에 처리하도록 하기 위해 Buffering을 할 수 있다. 하지만 이런 경우, Consumer가 현재 메시지를 처리할 수 있음에도, 대기를 해야한다. 그렇다고 전송 지연시간을 최소로 변경하면, 한번에 하나의 메시지만을 보내도록 하는것과 같으므로 매우 비효율적이다. pull 모델의 경우, 마지막으로 처리된 메시지 이후의 메시지를 Consumer가 처리가능한 때에 모두 가져오기 때문에, 이 문제를 해결함. 따라서 불필요한 지연 없이 최적의 일괄처리를 할 수 있습니다.
+3.  소비된 메시지 추적 (Commit과 Offset)
+
+    ![8](https://t1.daumcdn.net/cfile/tistory/9912C33B5FC70CB319)
+
+     메세지는 지정된 Topic에 전달됩니다. Topic은 다시 여러 Partition으로 나뉠 수도 있습니다. 위 그림에서 각 파티션의 한칸한칸은 로그라고 칭합니다. 또한 메시지는 로그에 순차적으로 append 됩니다. 그리고 이 메시지의 상대적인 위치를 offset이라고 칭합니다.
+    메시징 시스템은 Broker에서 소비된 메시지에 대한 메타데이터를 유지합니다. 즉, 메시지가 Consumer에게 전달되면 Broker는 이를 로컬에 기록하거나, 소비자의 승인을 기다립니다.
+
+    Commit과 Offset
+
+    Consumer의 poll()은 이전에 commit한 offset이 존재하면, 해당 offset 이후의 메시지를 읽어오게 됩니다. 또 읽어온 뒤, 마지막 offset을 commit을 합니다. 이어서 poll()이 실행되면 방금전 commit한 offset이후의 메시지를 읽어와 처리하게 됩니다.
+    메시지 소비중에는 다음과 같은 문제들이 발생할 수도 있습니다.
+
+    1. 소비된 메시지 기록시점
+
+        Broker가 메시지를 네트워크를 통해 Consumer에게 전달할때 마다, 즉시, 소비 된 것으로 기록하면, Consumer가 메시지 처리를 실패하면 해당 메시지가 손실됩니다.
+
+        이로 인해서, Broker는 메시지가 소비되었음을 기록하기 위해서, Consumer의 승인을 기다립니다. 하지만 이런식으로 메시지를 처리하게 되면 아래와 같은 문제점이 또 발생합니다.
+
+    2. 중복 메시지 전송과 멱등성
+
+        우선 Consumer가 메시지를 성공적으로 처리하고, 승인을 보내기전에 Broker가 실패하였다고 판단하고 다시 메시지를 보내게 되면, Consumer는 같은 메시지를 두번 처리하게 됩니다.
+
+        따라서, Consumer는 멱등성을 고려하여야 합니다. 즉, 같은 메시지를 특수한 상황에 의해 여러번 받아서 여러번 처리하더라도, 한번 처리한것과 같은 결과를 가지도록 설계해야 합니다.
+4. Consumer Group       
+    Consumer Group은 하나의 Topic을 구독하는 여러 Consumer들의 모음입니다. Topic을 구독하는 Consumer들을 Group화 하는 이유는, 가용성 때문입니다. 하나의 Topic을 처리하는 Consumer가 1개인 것보다 여러개라면 당연히 가용성은 증가할 것입니다.
+
+    아래에서 설명드릴 내용이지만, Consumer Group의 각 Consumer들은 하나의 Topic의 각기 다른 Partition의 내용만을 처리할 수 있는데요, 이를 통해서, Kafka는 메시지 처리 순서를 보장한다고 합니다. 이 때문에, 특정 Partition을 처리하던, Consumer가 처리 불가 상태가 된다면, 해당 Partition의 메시지를 처리할 수 없는 상태가 되어버립니다. 이때문에 Consumer Group이 필요합니다.
+
+    Rebalance
+
+    Partition을 담당하던 Consumer가 처리불가 상태가 되어버리면, Partition과 Consumer를 재조정하여, 남은 Consumer Group내의 Consumer들이 Partition을 적절하게 나누어 처리하게 됩니다.
+
+    또한 Consumer Group내에서 Consumer들간에 Offset 정보를 공유하고 있기 때문에, 특정 Consumer가 처리불가 상태가 되었을때, 해당 Consumer가 처리한 마지막 Offset이후 부터 처리를 이어서 할 수 있습니다.
+
+    이렇게 Partition을 나머지 Consumer들이 다시 나누어 처리하도록 하는 것을 Rebalance라고 하며, 이를 위해 Consumer Group이 필요합니다.
+
+    Consumer 확장
+
+    앞서 말씀드린, Consumer Group과 Partition의 관계에에 대해 알고 계셔야, Consumer의 성능 향상을 위한 확장을 제대로 하실수가 있습니다.     
+![9](https://t1.daumcdn.net/cfile/tistory/9933DB485FC70CCC19)
+
+    Consumer의 성능이 부족해, Consumer를 확장한다고 했을때, 앞서 설명드린것과 같이 Consumer Group내의 Consumer는 무조건 각기 다른 Partition에만 연결을 할 수 있다고 했습니다. 때문에, Consumer만을 확장하였고, 이때, Partition보다 Consumer의 수가 많으면 당연히, 새 Consumer는 놀게 됩니다.
+
+![10](https://t1.daumcdn.net/cfile/tistory/997CE33F5FC70CD31A)
+
+    따라서, Consumer를 확장할 때에는, Partition도 같이 늘려주어야 합니다.
+
+5. 메시지(이벤트) 전달 컨셉
+    kafka는 메시지 전달을 할때 보장하는 여러가지 방식이 있음
+
+    At most once(최대 한번)
+    메시지가 손실될 수 있지만, 재전달은 하지 않습니다.
+
+    At least once(최소 한번)
+    메시지가 손실되지 않지만, 재전달이 일어납니다.
+
+    Exactly once(정확히 한번)
+    메시지는 정확히 한번 전달이 됩니다.
+6. 메세지를 여러 Consumer에게 허용 (EX. Hadoop,Serch Engine, Monitoring, Email)
+7. 높은 처리량을 위한 메시지 최적화
+8. Scale-out 가능
+9. Eco-system
 
 ## Kafka Broker
 - 실행 된 Kafka 애플리케이션 서버

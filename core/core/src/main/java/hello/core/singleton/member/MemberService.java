@@ -1,0 +1,8 @@
+package hello.core.singleton.member;
+
+public interface MemberService {
+
+    void join(Member member);
+
+    Member findMember(Long memberId);
+}
